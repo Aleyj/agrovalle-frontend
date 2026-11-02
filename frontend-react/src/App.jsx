@@ -13,7 +13,8 @@ function App() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post('http://192.168.139.136:3000/api/login', credenciales);
+      // API apuntando a Render
+      const res = await axios.post('https://agrovalle-backend-api.onrender.com/api/login', credenciales);
       setToken(res.data.token);
       localStorage.setItem('tokenAgroValle', res.data.token);
     } catch (error) {
@@ -28,7 +29,8 @@ function App() {
 
   const solicitarReporte = async () => {
     try {
-      await axios.post('http://192.168.139.136:3000/api/reporte');
+      // API apuntando a Render
+      await axios.post('https://agrovalle-backend-api.onrender.com/api/reporte');
       alert("¡Reporte enviado a tu Gmail!");
     } catch (error) {
       alert("Error al enviar el reporte");
@@ -44,7 +46,8 @@ function App() {
     setPregunta('');
 
     try {
-      const res = await axios.post('http://192.168.139.136:3000/api/chatbot', { pregunta: preguntaActual });
+      // API apuntando a Render
+      const res = await axios.post('https://agrovalle-backend-api.onrender.com/api/chatbot', { pregunta: preguntaActual });
       setChatHistorial(prev => [...prev, { rol: 'user', texto: preguntaActual }, { rol: 'bot', texto: res.data.respuesta }]);
     } catch (error) {
       alert("Error al comunicarse con AgroBot");
@@ -57,7 +60,8 @@ function App() {
     if (!token) return;
     const cargarDatos = async () => {
       try {
-        const respuesta = await axios.get('http://192.168.139.136:3000/api/historial');
+        // API apuntando a Render
+        const respuesta = await axios.get('https://agrovalle-backend-api.onrender.com/api/historial');
         setDatos(respuesta.data);
       } catch (error) {
         console.error("Error al obtener datos", error);

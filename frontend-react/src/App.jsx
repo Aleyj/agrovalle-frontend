@@ -8,19 +8,33 @@ const api = axios.create({
 });
 
 function Icono({ nombre, ...props }) {
+  if (nombre === 'planta' || nombre === 'bot') {
+    return <span className="icono-emoji" aria-hidden="true">{nombre === 'planta' ? '🌱' : '🤖'}</span>;
+  }
   const trazos = {
-    planta: <><path d="M12 21v-9M12 16C5 16 3 12 3 5c7 0 9 4 9 9M12 13c0-6 3-9 9-9 0 6-3 9-9 9" /></>,
     temperatura: <><path d="M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0Z" /><path d="M12 8v10" /></>,
     humedad: <path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12Z" />,
     correo: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></>,
     flecha: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
-    bot: <><rect x="4" y="7" width="16" height="14" rx="4" /><path d="M12 3v4m-4 6h.01M16 13h.01M9 17h6" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{trazos[nombre]}</svg>;
 }
 
 function Marca() {
   return <div className="marca"><span className="marca-icono"><Icono nombre="planta" /></span><div><h1>AgroValle</h1><p>Monitoreo agrícola</p></div></div>;
+}
+
+function SelectorTema({ tema, cambiarTema }) {
+  const destino = tema === 'dark' ? 'claro' : 'oscuro';
+  return <button type="button" className="boton secundario selector-tema" onClick={cambiarTema} aria-label={`Activar modo ${destino}`} aria-pressed={tema === 'dark'} title={`Activar modo ${destino}`}><span aria-hidden="true">{tema === 'dark' ? '☀️' : '🌙'}</span><span className="texto-tema">Modo {destino}</span></button>;
+}
+
+function temaInicial() {
+  try {
+    const guardado = localStorage.getItem('temaAgroValle');
+    if (guardado === 'light' || guardado === 'dark') return guardado;
+  } catch { /* El tema sigue funcionando si el navegador bloquea su persistencia. */ }
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 function numero(valor) {
@@ -49,6 +63,7 @@ function TextoMensaje({ texto }) {
 }
 
 function App() {
+  const [tema, setTema] = useState(temaInicial);
   const [datos, setDatos] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('tokenAgroValle') || '');
   const [credenciales, setCredenciales] = useState({ usuario: '', password: '' });
@@ -65,6 +80,14 @@ function App() {
   const [avisoReporte, setAvisoReporte] = useState(null);
   const mensajesRef = useRef(null);
   const sesionRef = useRef(0);
+
+  useEffect(() => {
+    document.documentElement.dataset.tema = tema;
+    try { localStorage.setItem('temaAgroValle', tema); } catch { /* Preferencia solo durante esta sesión. */ }
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', tema === 'dark' ? '#111a16' : '#f4f7f3');
+  }, [tema]);
+
+  const cambiarTema = () => setTema(actual => actual === 'dark' ? 'light' : 'dark');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -189,7 +212,7 @@ function App() {
   if (!token) return (
     <main className="acceso">
       <div className="acceso-panel">
-        <Marca />
+        <div className="acceso-marca"><Marca /><SelectorTema tema={tema} cambiarTema={cambiarTema} /></div>
         <div className="acceso-titulo"><h2>Bienvenido a tu cultivo</h2><p>Ingresa para consultar tus lecturas y conversar con AgroBot.</p></div>
         <form className="form-acceso" onSubmit={handleLogin}>
           <label htmlFor="usuario">Usuario</label>
@@ -210,6 +233,7 @@ function App() {
         <Marca />
         <div className="acciones-cabecera">
           <button className="boton primario" onClick={solicitarReporte} disabled={enviandoReporte}><Icono nombre="correo" />{enviandoReporte ? 'Preparando reporte…' : 'Enviar reporte'}</button>
+          <SelectorTema tema={tema} cambiarTema={cambiarTema} />
           <button className="boton secundario" onClick={handleLogout}>Salir</button>
         </div>
       </header>

@@ -7,6 +7,13 @@
     <meta name="theme-color" content="#17613d" />
     <meta name="description" content="AgroValle: lecturas agrícolas, historial y asistencia agronómica." />
     <title>AgroValle | Monitoreo agrícola</title>
+    <script>
+      try {
+        const tema = localStorage.getItem('temaAgroValle');
+        document.documentElement.dataset.tema = tema === 'light' || tema === 'dark'
+          ? tema : window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

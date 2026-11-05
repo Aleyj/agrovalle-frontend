@@ -198,17 +198,6 @@ function App() {
     if (lista) lista.scrollTop = lista.scrollHeight;
   }, [chatHistorial, cargandoChat]);
 
-  // El historial llega ordenado por ID descendente. Se elige la fecha más reciente
-  // de cada dispositivo cuando está disponible, manteniendo el orden como alternativa.
-  const ultimas = new Map();
-  for (const lectura of datos) {
-    const dispositivo = lectura.dispositivo_id ?? '';
-    const previa = ultimas.get(dispositivo);
-    const actualFecha = Date.parse(lectura.fecha_hora);
-    const previaFecha = Date.parse(previa?.fecha_hora);
-    if (!previa || Number.isFinite(actualFecha) && (!Number.isFinite(previaFecha) || actualFecha > previaFecha)) ultimas.set(dispositivo, lectura);
-  }
-
   if (!token) return (
     <main className="acceso">
       <div className="acceso-panel">
@@ -242,14 +231,14 @@ function App() {
         {avisoReporte && <div className={`aviso ${avisoReporte.error ? 'aviso-error' : ''}`} role={avisoReporte.error ? 'alert' : 'status'}>{avisoReporte.mensaje}</div>}
         <div className="contenido-principal">
           <section className="lecturas" aria-labelledby="titulo-lecturas">
-            <div className="titulo-seccion"><div><span className="antetitulo">TU CULTIVO, DE UN VISTAZO</span><h2 id="titulo-lecturas">Últimas lecturas</h2></div><span className="contador">{ultimas.size} {ultimas.size === 1 ? 'dispositivo' : 'dispositivos'}</span></div>
-            <p className="descripcion-seccion">Última medición por dispositivo en el historial disponible.</p>
+            <div className="titulo-seccion"><div><span className="antetitulo">TU CULTIVO, DE UN VISTAZO</span><h2 id="titulo-lecturas">Dispositivos ESP</h2></div><span className="contador">{datos.length} {datos.length === 1 ? 'dispositivo' : 'dispositivos'}</span></div>
+            <p className="descripcion-seccion">Temperatura, humedad y estado de cada equipo.</p>
             {errorDatos && <p className="aviso aviso-error" role="alert">{errorDatos}</p>}
             {cargandoDatos ? <div className="estado-vacio" role="status">Cargando lecturas…</div> : datos.length === 0 ? <div className="estado-vacio"><Icono nombre="planta" /><h3>Aún no hay lecturas disponibles</h3><p>Las mediciones aparecerán aquí cuando se registren.</p></div> :
-              <div className="tarjetas">{[...ultimas.values()].map(lectura => {
+              <div className="tarjetas">{datos.map(lectura => {
                 const alta = numero(lectura.temperatura) !== null && numero(lectura.temperatura) > 30;
                 return <article key={lectura.id} className={`tarjeta ${alta ? 'tarjeta-alerta' : ''}`}>
-                  <div className="tarjeta-cabecera"><h3>{lectura.dispositivo_id || 'Dispositivo sin nombre'}</h3><span className={`etiqueta ${alta ? 'alta' : ''}`}>{alta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
+                  <div className="tarjeta-cabecera"><div><h3>{lectura.dispositivo_id || 'Dispositivo sin nombre'}</h3><p className="id-dispositivo">ID {lectura.id}</p></div><span className={`etiqueta ${alta ? 'alta' : ''}`}>{alta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
                   <dl className="mediciones">
                     <div><dt><Icono nombre="temperatura" />Temperatura</dt><dd className={alta ? 'valor-alto' : ''}>{medida(lectura.temperatura)}<span>°C</span></dd></div>
                     <div><dt><Icono nombre="humedad" />Humedad</dt><dd>{medida(lectura.humedad)}<span>%</span></dd></div>
@@ -276,15 +265,6 @@ function App() {
           </section>
         </div>
 
-        <section className="historial-panel" aria-labelledby="titulo-historial">
-          <div className="titulo-seccion"><div><span className="antetitulo">REGISTRO DE MEDICIONES</span><h2 id="titulo-historial">Historial reciente</h2></div><span className="contador">{datos.length} {datos.length === 1 ? 'lectura' : 'lecturas'}</span></div>
-          <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla de historial, desplazable horizontalmente">
-            <table><caption className="solo-lector">Lecturas recuperadas, ordenadas desde el registro más reciente</caption><thead><tr><th scope="col">Dispositivo</th><th scope="col">Temperatura</th><th scope="col">Humedad</th><th scope="col">Bomba</th><th scope="col">Fecha de lectura</th></tr></thead><tbody>
-              {datos.map(lectura => <tr key={lectura.id}><th scope="row">{lectura.dispositivo_id || 'Sin nombre'}</th><td><span className={numero(lectura.temperatura) > 30 ? 'temperatura-alta' : ''}>{medida(lectura.temperatura)} °C</span></td><td>{medida(lectura.humedad)} %</td><td>{estadoBomba(lectura.bomba_encendida)}</td><td className="fecha-tabla">{fecha(lectura.fecha_hora)}</td></tr>)}
-              {!datos.length && <tr><td colSpan={5} className="tabla-vacia">{cargandoDatos ? 'Cargando historial…' : 'No hay lecturas para mostrar.'}</td></tr>}
-            </tbody></table>
-          </div>
-        </section>
       </main>
       <footer className="pie">AgroValle<span>Monitoreo agrícola · Proyecto académico</span></footer>
     </div>

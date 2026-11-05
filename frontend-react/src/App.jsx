@@ -2,6 +2,11 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
 
+const api = axios.create({
+  baseURL: (import.meta.env.VITE_API_URL || 'https://agrovalle-backend-api.onrender.com').replace(/\/+$/, ''),
+  timeout: 60000,
+});
+
 function App() {
   const [datos, setDatos] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('tokenAgroValle') || '');
@@ -9,15 +14,16 @@ function App() {
   const [pregunta, setPregunta] = useState('');
   const [chatHistorial, setChatHistorial] = useState([]);
   const [cargandoChat, setCargandoChat] = useState(false);
+  const [enviandoReporte, setEnviandoReporte] = useState(false);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      // API apuntando a Render
-      const res = await axios.post('https://agrovalle-backend-api.onrender.com/api/login', credenciales);
+      // API seleccionada por VITE_API_URL; Render es el valor predeterminado.
+      const res = await api.post('/api/login', credenciales);
       setToken(res.data.token);
       localStorage.setItem('tokenAgroValle', res.data.token);
-    } catch (error) {
+    } catch {
       alert("Credenciales incorrectas");
     }
   };
@@ -28,29 +34,34 @@ function App() {
   };
 
   const solicitarReporte = async () => {
+    if (enviandoReporte) return;
+    setEnviandoReporte(true);
     try {
-      // API apuntando a Render
-      await axios.post('https://agrovalle-backend-api.onrender.com/api/reporte');
-      alert("¡Reporte enviado a tu Gmail!");
+      // En validación local el backend prepara el correo sin enviarlo.
+      const res = await api.post('/api/reporte');
+      alert(res.data.mensaje);
     } catch (error) {
-      alert("Error al enviar el reporte");
+      alert(error.response?.data?.error || "Error al enviar el reporte");
+    } finally {
+      setEnviandoReporte(false);
     }
   };
 
   const enviarPreguntaChat = async (e) => {
     e.preventDefault();
-    if (!pregunta.trim()) return;
+    if (!pregunta.trim() || cargandoChat) return;
 
     setCargandoChat(true);
     const preguntaActual = pregunta;
     setPregunta('');
 
     try {
-      // API apuntando a Render
-      const res = await axios.post('https://agrovalle-backend-api.onrender.com/api/chatbot', { pregunta: preguntaActual });
+      // API seleccionada por VITE_API_URL.
+      const res = await api.post('/api/chatbot', { pregunta: preguntaActual });
       setChatHistorial(prev => [...prev, { rol: 'user', texto: preguntaActual }, { rol: 'bot', texto: res.data.respuesta }]);
     } catch (error) {
-      alert("Error al comunicarse con AgroBot");
+      setPregunta(preguntaActual);
+      alert(error.response?.data?.error || "Error al comunicarse con AgroBot");
     } finally {
       setCargandoChat(false);
     }
@@ -60,8 +71,8 @@ function App() {
     if (!token) return;
     const cargarDatos = async () => {
       try {
-        // API apuntando a Render
-        const respuesta = await axios.get('https://agrovalle-backend-api.onrender.com/api/historial');
+        // API seleccionada por VITE_API_URL.
+        const respuesta = await api.get('/api/historial');
         setDatos(respuesta.data);
       } catch (error) {
         console.error("Error al obtener datos", error);
@@ -90,7 +101,7 @@ function App() {
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h1>🌱 Panel AgroValle + Asistente IA</h1>
         <div>
-          <button onClick={solicitarReporte} style={{ background: '#27ae60', color: 'white', marginRight: '10px', padding: '10px', border: 'none', cursor: 'pointer' }}>📧 Enviar Reporte</button>
+          <button onClick={solicitarReporte} disabled={enviandoReporte} style={{ background: '#27ae60', color: 'white', marginRight: '10px', padding: '10px', border: 'none', cursor: 'pointer' }}>{enviandoReporte ? 'Enviando reporte…' : '📧 Enviar Reporte'}</button>
           <button onClick={handleLogout} style={{ background: '#d9534f', color: 'white', padding: '10px', border: 'none', cursor: 'pointer' }}>Salir</button>
         </div>
       </header>
@@ -127,10 +138,12 @@ function App() {
             type="text" 
             placeholder="Pregunta sobre los parámetros del cultivo..." 
             value={pregunta} 
+            maxLength={4000}
+            disabled={cargandoChat}
             onChange={e => setPregunta(e.target.value)} 
             style={{ flex: '1', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
           />
-          <button type="submit" style={{ background: '#2980b9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>Enviar</button>
+          <button type="submit" disabled={cargandoChat} style={{ background: '#2980b9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>Enviar</button>
         </form>
       </div>
     </div>

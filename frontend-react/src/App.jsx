@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 
@@ -7,145 +7,262 @@ const api = axios.create({
   timeout: 60000,
 });
 
+function Icono({ nombre, ...props }) {
+  const trazos = {
+    planta: <><path d="M12 21v-9M12 16C5 16 3 12 3 5c7 0 9 4 9 9M12 13c0-6 3-9 9-9 0 6-3 9-9 9" /></>,
+    temperatura: <><path d="M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0Z" /><path d="M12 8v10" /></>,
+    humedad: <path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12Z" />,
+    correo: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></>,
+    flecha: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
+    bot: <><rect x="4" y="7" width="16" height="14" rx="4" /><path d="M12 3v4m-4 6h.01M16 13h.01M9 17h6" /></>,
+  };
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{trazos[nombre]}</svg>;
+}
+
+function Marca() {
+  return <div className="marca"><span className="marca-icono"><Icono nombre="planta" /></span><div><h1>AgroValle</h1><p>Monitoreo agrícola</p></div></div>;
+}
+
+function numero(valor) {
+  if (valor === null || valor === undefined || typeof valor === 'boolean' || String(valor).trim() === '') return null;
+  const n = Number(valor);
+  return Number.isFinite(n) ? n : null;
+}
+
+function medida(valor) {
+  const n = numero(valor);
+  return n === null ? '—' : n.toLocaleString('es-PE', { maximumFractionDigits: 1 });
+}
+
+function fecha(valor) {
+  const d = valor ? new Date(valor) : null;
+  return d && Number.isFinite(d.getTime()) ? d.toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Fecha no disponible';
+}
+
+function estadoBomba(valor) {
+  return valor === true ? 'Encendida' : valor === false ? 'Apagada' : 'Sin dato';
+}
+
+function TextoMensaje({ texto }) {
+  // Solo negritas y saltos de línea. El contenido siempre se renderiza como texto seguro.
+  return <span className="texto-mensaje">{String(texto).split(/(\*\*[^*]+\*\*)/g).map((parte, i) => parte.startsWith('**') && parte.endsWith('**') ? <strong key={i}>{parte.slice(2, -2)}</strong> : parte)}</span>;
+}
+
 function App() {
   const [datos, setDatos] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('tokenAgroValle') || '');
   const [credenciales, setCredenciales] = useState({ usuario: '', password: '' });
+  const [ingresando, setIngresando] = useState(false);
+  const [errorLogin, setErrorLogin] = useState('');
+  const [cargandoDatos, setCargandoDatos] = useState(true);
+  const [errorDatos, setErrorDatos] = useState('');
   const [pregunta, setPregunta] = useState('');
+  const [preguntaPendiente, setPreguntaPendiente] = useState('');
   const [chatHistorial, setChatHistorial] = useState([]);
   const [cargandoChat, setCargandoChat] = useState(false);
+  const [errorChat, setErrorChat] = useState('');
   const [enviandoReporte, setEnviandoReporte] = useState(false);
+  const [avisoReporte, setAvisoReporte] = useState(null);
+  const mensajesRef = useRef(null);
+  const sesionRef = useRef(0);
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (ingresando) return;
+    setIngresando(true);
+    setErrorLogin('');
     try {
-      // API seleccionada por VITE_API_URL; Render es el valor predeterminado.
       const res = await api.post('/api/login', credenciales);
       setToken(res.data.token);
       localStorage.setItem('tokenAgroValle', res.data.token);
-    } catch {
-      alert("Credenciales incorrectas");
+      setCredenciales({ usuario: '', password: '' });
+    } catch (error) {
+      setErrorLogin(error.response?.status === 401 ? 'Usuario o contraseña incorrectos.' : 'No se pudo iniciar sesión. Comprueba tu conexión e inténtalo de nuevo.');
+    } finally {
+      setIngresando(false);
     }
   };
 
   const handleLogout = () => {
+    sesionRef.current += 1;
     setToken('');
     localStorage.removeItem('tokenAgroValle');
+    setDatos([]);
+    setChatHistorial([]);
+    setPregunta('');
+    setPreguntaPendiente('');
+    setErrorChat('');
+    setErrorDatos('');
+    setAvisoReporte(null);
+    setCargandoDatos(true);
+    setCargandoChat(false);
+    setEnviandoReporte(false);
   };
 
   const solicitarReporte = async () => {
     if (enviandoReporte) return;
+    const sesion = sesionRef.current;
     setEnviandoReporte(true);
+    setAvisoReporte(null);
     try {
-      // En validación local el backend prepara el correo sin enviarlo.
       const res = await api.post('/api/reporte');
-      alert(res.data.mensaje);
+      if (sesion !== sesionRef.current) return;
+      const mensaje = res.data.preparado ? 'Reporte preparado para revisión; no se envió correo.' :
+        res.data.correo?.estado === 'aceptado' ? `Reporte aceptado por ${res.data.correo.proveedor === 'resend' ? 'Resend' : 'el servidor de correo'}. La entrega aún no está confirmada.` :
+        res.data.mensaje || 'Solicitud de reporte procesada.';
+      setAvisoReporte({ error: false, mensaje });
     } catch (error) {
-      alert(error.response?.data?.error || "Error al enviar el reporte");
+      if (sesion === sesionRef.current) setAvisoReporte({ error: true, mensaje: error.response?.data?.error || 'No se pudo confirmar el envío del reporte. No se reintentó automáticamente.' });
     } finally {
-      setEnviandoReporte(false);
+      if (sesion === sesionRef.current) setEnviandoReporte(false);
     }
   };
 
   const enviarPreguntaChat = async (e) => {
     e.preventDefault();
     if (!pregunta.trim() || cargandoChat) return;
-
+    const sesion = sesionRef.current;
+    const preguntaActual = pregunta.trim();
     setCargandoChat(true);
-    const preguntaActual = pregunta;
+    setErrorChat('');
+    setPreguntaPendiente(preguntaActual);
     setPregunta('');
-
     try {
-      // API seleccionada por VITE_API_URL.
       const res = await api.post('/api/chatbot', { pregunta: preguntaActual });
+      if (sesion !== sesionRef.current) return;
       setChatHistorial(prev => [...prev, { rol: 'user', texto: preguntaActual }, { rol: 'bot', texto: res.data.respuesta }]);
     } catch (error) {
+      if (sesion !== sesionRef.current) return;
       setPregunta(preguntaActual);
-      alert(error.response?.data?.error || "Error al comunicarse con AgroBot");
+      setErrorChat(error.response?.data?.error || 'No se pudo consultar a AgroBot. Inténtalo de nuevo.');
     } finally {
-      setCargandoChat(false);
+      if (sesion === sesionRef.current) {
+        setCargandoChat(false);
+        setPreguntaPendiente('');
+      }
     }
   };
 
   useEffect(() => {
     if (!token) return;
+    let activo = true;
+    let consultando = false;
+    const controller = new AbortController();
     const cargarDatos = async () => {
+      if (consultando) return;
+      consultando = true;
       try {
-        // API seleccionada por VITE_API_URL.
-        const respuesta = await api.get('/api/historial');
-        setDatos(respuesta.data);
-      } catch (error) {
-        console.error("Error al obtener datos", error);
+        const respuesta = await api.get('/api/historial', { signal: controller.signal });
+        if (!Array.isArray(respuesta.data)) throw new Error('HISTORIAL_INVALIDO');
+        if (activo) {
+          setDatos(respuesta.data);
+          setErrorDatos('');
+        }
+      } catch {
+        if (activo) setErrorDatos('No se pudieron actualizar las lecturas. Los datos visibles pueden estar desactualizados.');
+      } finally {
+        consultando = false;
+        if (activo) setCargandoDatos(false);
       }
     };
     cargarDatos();
     const intervalo = setInterval(cargarDatos, 5000);
-    return () => clearInterval(intervalo);
+    return () => { activo = false; controller.abort(); clearInterval(intervalo); };
   }, [token]);
 
-  if (!token) {
-    return (
-      <div className="App" style={{ paddingTop: '100px' }}>
-        <h2>🔒 Acceso Administrativo AgroValle</h2>
-        <form onSubmit={handleLogin}>
-          <input type="text" placeholder="Usuario" onChange={e => setCredenciales({...credenciales, usuario: e.target.value})} required style={{ padding: '10px', margin: '5px' }}/>
-          <input type="password" placeholder="Contraseña" onChange={e => setCredenciales({...credenciales, password: e.target.value})} required style={{ padding: '10px', margin: '5px' }}/>
-          <button type="submit" style={{ padding: '10px 20px', background: '#2c3e50', color: 'white', border: 'none', cursor: 'pointer' }}>Ingresar</button>
-        </form>
-      </div>
-    );
+  useEffect(() => {
+    const lista = mensajesRef.current;
+    if (lista) lista.scrollTop = lista.scrollHeight;
+  }, [chatHistorial, cargandoChat]);
+
+  // El historial llega ordenado por ID descendente. Se elige la fecha más reciente
+  // de cada dispositivo cuando está disponible, manteniendo el orden como alternativa.
+  const ultimas = new Map();
+  for (const lectura of datos) {
+    const dispositivo = lectura.dispositivo_id ?? '';
+    const previa = ultimas.get(dispositivo);
+    const actualFecha = Date.parse(lectura.fecha_hora);
+    const previaFecha = Date.parse(previa?.fecha_hora);
+    if (!previa || Number.isFinite(actualFecha) && (!Number.isFinite(previaFecha) || actualFecha > previaFecha)) ultimas.set(dispositivo, lectura);
   }
 
+  if (!token) return (
+    <main className="acceso">
+      <div className="acceso-panel">
+        <Marca />
+        <div className="acceso-titulo"><h2>Bienvenido a tu cultivo</h2><p>Ingresa para consultar tus lecturas y conversar con AgroBot.</p></div>
+        <form className="form-acceso" onSubmit={handleLogin}>
+          <label htmlFor="usuario">Usuario</label>
+          <input id="usuario" autoComplete="username" value={credenciales.usuario} onChange={e => setCredenciales({ ...credenciales, usuario: e.target.value })} required />
+          <label htmlFor="password">Contraseña</label>
+          <input id="password" type="password" autoComplete="current-password" value={credenciales.password} onChange={e => setCredenciales({ ...credenciales, password: e.target.value })} required />
+          {errorLogin && <p className="mensaje-error" role="alert">{errorLogin}</p>}
+          <button className="boton primario" type="submit" disabled={ingresando}>{ingresando ? 'Ingresando…' : 'Ingresar'}<Icono nombre="flecha" /></button>
+        </form>
+        <p className="nota-acceso">AgroValle · Agricultura de precisión</p>
+      </div>
+    </main>
+  );
+
   return (
-    <div className="App">
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-        <h1>🌱 Panel AgroValle + Asistente IA</h1>
-        <div>
-          <button onClick={solicitarReporte} disabled={enviandoReporte} style={{ background: '#27ae60', color: 'white', marginRight: '10px', padding: '10px', border: 'none', cursor: 'pointer' }}>{enviandoReporte ? 'Enviando reporte…' : '📧 Enviar Reporte'}</button>
-          <button onClick={handleLogout} style={{ background: '#d9534f', color: 'white', padding: '10px', border: 'none', cursor: 'pointer' }}>Salir</button>
+    <div className="app">
+      <header className="cabecera">
+        <Marca />
+        <div className="acciones-cabecera">
+          <button className="boton primario" onClick={solicitarReporte} disabled={enviandoReporte}><Icono nombre="correo" />{enviandoReporte ? 'Preparando reporte…' : 'Enviar reporte'}</button>
+          <button className="boton secundario" onClick={handleLogout}>Salir</button>
         </div>
       </header>
-      
-      <div className="tarjetas">
-        {datos.map((lectura) => (
-          <div key={lectura.id} className="tarjeta">
-            <h3>{lectura.dispositivo_id}</h3>
-            <p><b>Temperatura:</b> <span style={{ color: lectura.temperatura > 30 ? 'red' : 'inherit' }}>{lectura.temperatura}°C</span></p>
-            <p><b>Humedad:</b> {lectura.humedad}%</p>
-            <p><b>Bomba:</b> {lectura.bomba_encendida ? "Encendida 💧" : "Apagada 🛑"}</p>
-            <small className="fecha">{new Date(lectura.fecha_hora).toLocaleString()}</small>
-          </div>
-        ))}
-      </div>
 
-      <div className="chat-container" style={{ marginTop: '40px', padding: '20px', background: '#f9f9f9', borderRadius: '10px', border: '1px solid #ddd', textAlign: 'left', maxWidth: '800px', margin: '40px auto' }}>
-        <h3>🤖 AgroBot - Asistente Agronómico con IA</h3>
-        
-        <div className="mensajes" style={{ background: 'white', padding: '15px', height: '250px', overflowY: 'scroll', border: '1px solid #ccc', borderRadius: '5px', marginBottom: '15px' }}>
-          {chatHistorial.length === 0 && <p style={{ color: '#aaa', textAlign: 'center' }}>Escribe una consulta para consultar al manual...</p>}
-          {chatHistorial.map((msg, index) => (
-            <div key={index} style={{ margin: '10px 0', textAlign: msg.rol === 'user' ? 'right' : 'left' }}>
-              <span style={{ background: msg.rol === 'user' ? '#e3f2fd' : '#e8f5e9', padding: '8px 12px', borderRadius: '8px', display: 'inline-block', maxWidth: '80%' }}>
-                <b>{msg.rol === 'user' ? 'Tú: ' : 'AgroBot: '}</b>{msg.texto}
-              </span>
+      <main>
+        {avisoReporte && <div className={`aviso ${avisoReporte.error ? 'aviso-error' : ''}`} role={avisoReporte.error ? 'alert' : 'status'}>{avisoReporte.mensaje}</div>}
+        <div className="contenido-principal">
+          <section className="lecturas" aria-labelledby="titulo-lecturas">
+            <div className="titulo-seccion"><div><span className="antetitulo">TU CULTIVO, DE UN VISTAZO</span><h2 id="titulo-lecturas">Últimas lecturas</h2></div><span className="contador">{ultimas.size} {ultimas.size === 1 ? 'dispositivo' : 'dispositivos'}</span></div>
+            <p className="descripcion-seccion">Última medición por dispositivo en el historial disponible.</p>
+            {errorDatos && <p className="aviso aviso-error" role="alert">{errorDatos}</p>}
+            {cargandoDatos ? <div className="estado-vacio" role="status">Cargando lecturas…</div> : datos.length === 0 ? <div className="estado-vacio"><Icono nombre="planta" /><h3>Aún no hay lecturas disponibles</h3><p>Las mediciones aparecerán aquí cuando se registren.</p></div> :
+              <div className="tarjetas">{[...ultimas.values()].map(lectura => {
+                const alta = numero(lectura.temperatura) !== null && numero(lectura.temperatura) > 30;
+                return <article key={lectura.id} className={`tarjeta ${alta ? 'tarjeta-alerta' : ''}`}>
+                  <div className="tarjeta-cabecera"><h3>{lectura.dispositivo_id || 'Dispositivo sin nombre'}</h3><span className={`etiqueta ${alta ? 'alta' : ''}`}>{alta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
+                  <dl className="mediciones">
+                    <div><dt><Icono nombre="temperatura" />Temperatura</dt><dd className={alta ? 'valor-alto' : ''}>{medida(lectura.temperatura)}<span>°C</span></dd></div>
+                    <div><dt><Icono nombre="humedad" />Humedad</dt><dd>{medida(lectura.humedad)}<span>%</span></dd></div>
+                  </dl>
+                  <div className="estado-bomba"><span>Bomba</span><span className="bomba-valor"><span className={`punto ${lectura.bomba_encendida === true ? 'activo' : ''}`} />{estadoBomba(lectura.bomba_encendida)}</span></div>
+                  <p className="fecha-lectura">Última lectura<span>{fecha(lectura.fecha_hora)}</span></p>
+                </article>;
+              })}</div>}
+          </section>
+
+          <section className="chat-panel" aria-labelledby="titulo-chat">
+            <div className="chat-cabecera"><span className="bot-icono"><Icono nombre="bot" /></span><div><h2 id="titulo-chat">AgroBot</h2><p>Tu asistente agronómico</p></div><span className="etiqueta ia">IA</span></div>
+            <div className="mensajes" ref={mensajesRef} role="log" aria-label="Conversación con AgroBot" aria-live="polite" aria-relevant="additions text" tabIndex={0}>
+              {chatHistorial.length === 0 && !cargandoChat && <div className="chat-bienvenida"><Icono nombre="planta" /><h3>Una mano para cuidar tu cultivo</h3><p>Consulta los parámetros del manual y resuelve tus dudas sobre temperatura y humedad.</p><button className="sugerencia" onClick={() => setPregunta('¿Cuál es el rango de temperatura recomendado?')}>¿Qué temperatura se recomienda?</button></div>}
+              {chatHistorial.map((msg, i) => <div className={`mensaje ${msg.rol}`} key={i}><span className="autor-mensaje">{msg.rol === 'user' ? 'Tú' : 'AgroBot'}</span><TextoMensaje texto={msg.texto} /></div>)}
+              {cargandoChat && <><div className="mensaje user"><span className="autor-mensaje">Tú</span><TextoMensaje texto={preguntaPendiente} /></div><p className="consultando">Consultando…</p></>}
             </div>
-          ))}
-          {cargandoChat && <p style={{ color: '#27ae60', fontStyle: 'italic' }}>AgroBot está consultando el manual...</p>}
+            <form className="form-chat" onSubmit={enviarPreguntaChat}>
+              {errorChat && <p className="mensaje-error" role="alert">{errorChat}</p>}
+              <label className="solo-lector" htmlFor="pregunta">Tu pregunta para AgroBot</label>
+              <div className="entrada-chat"><input id="pregunta" type="text" placeholder="Escribe tu consulta…" value={pregunta} maxLength={4000} disabled={cargandoChat} onChange={e => setPregunta(e.target.value)} /><button className="boton primario" type="submit" disabled={cargandoChat || !pregunta.trim()} aria-label="Enviar pregunta"><Icono nombre="flecha" /></button></div>
+              <p className="nota-chat">Orientación basada en el manual del proyecto.</p>
+            </form>
+          </section>
         </div>
 
-        <form onSubmit={enviarPreguntaChat} style={{ display: 'flex', gap: '10px' }}>
-          <input 
-            type="text" 
-            placeholder="Pregunta sobre los parámetros del cultivo..." 
-            value={pregunta} 
-            maxLength={4000}
-            disabled={cargandoChat}
-            onChange={e => setPregunta(e.target.value)} 
-            style={{ flex: '1', padding: '10px', borderRadius: '5px', border: '1px solid #ccc' }}
-          />
-          <button type="submit" disabled={cargandoChat} style={{ background: '#2980b9', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '5px', cursor: 'pointer' }}>Enviar</button>
-        </form>
-      </div>
+        <section className="historial-panel" aria-labelledby="titulo-historial">
+          <div className="titulo-seccion"><div><span className="antetitulo">REGISTRO DE MEDICIONES</span><h2 id="titulo-historial">Historial reciente</h2></div><span className="contador">{datos.length} {datos.length === 1 ? 'lectura' : 'lecturas'}</span></div>
+          <div className="tabla-contenedor" tabIndex={0} role="region" aria-label="Tabla de historial, desplazable horizontalmente">
+            <table><caption className="solo-lector">Lecturas recuperadas, ordenadas desde el registro más reciente</caption><thead><tr><th scope="col">Dispositivo</th><th scope="col">Temperatura</th><th scope="col">Humedad</th><th scope="col">Bomba</th><th scope="col">Fecha de lectura</th></tr></thead><tbody>
+              {datos.map(lectura => <tr key={lectura.id}><th scope="row">{lectura.dispositivo_id || 'Sin nombre'}</th><td><span className={numero(lectura.temperatura) > 30 ? 'temperatura-alta' : ''}>{medida(lectura.temperatura)} °C</span></td><td>{medida(lectura.humedad)} %</td><td>{estadoBomba(lectura.bomba_encendida)}</td><td className="fecha-tabla">{fecha(lectura.fecha_hora)}</td></tr>)}
+              {!datos.length && <tr><td colSpan={5} className="tabla-vacia">{cargandoDatos ? 'Cargando historial…' : 'No hay lecturas para mostrar.'}</td></tr>}
+            </tbody></table>
+          </div>
+        </section>
+      </main>
+      <footer className="pie">AgroValle<span>Monitoreo agrícola · Proyecto académico</span></footer>
     </div>
   );
 }

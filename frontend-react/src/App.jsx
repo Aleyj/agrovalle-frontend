@@ -64,7 +64,7 @@ function TextoMensaje({ texto }) {
 
 function App() {
   const [tema, setTema] = useState(temaInicial);
-  const [datos, setDatos] = useState([]);
+  const [estado, setEstado] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('tokenAgroValle') || '');
   const [credenciales, setCredenciales] = useState({ usuario: '', password: '' });
   const [ingresando, setIngresando] = useState(false);
@@ -110,7 +110,7 @@ function App() {
     sesionRef.current += 1;
     setToken('');
     localStorage.removeItem('tokenAgroValle');
-    setDatos([]);
+    setEstado(null);
     setChatHistorial([]);
     setPregunta('');
     setPreguntaPendiente('');
@@ -175,10 +175,12 @@ function App() {
       if (consultando) return;
       consultando = true;
       try {
-        const respuesta = await api.get('/api/historial', { signal: controller.signal });
-        if (!Array.isArray(respuesta.data)) throw new Error('HISTORIAL_INVALIDO');
+        const respuesta = await api.get('/api/estado', { signal: controller.signal });
+        if (respuesta.data?.ok !== true || !respuesta.data.planta?.dispositivo_id ||
+            respuesta.data.lectura === undefined || respuesta.data.lectura !== null &&
+            respuesta.data.lectura.dispositivo_id !== respuesta.data.planta.dispositivo_id) throw new Error('ESTADO_INVALIDO');
         if (activo) {
-          setDatos(respuesta.data);
+          setEstado(respuesta.data);
           setErrorDatos('');
         }
       } catch {
@@ -197,6 +199,9 @@ function App() {
     const lista = mensajesRef.current;
     if (lista) lista.scrollTop = lista.scrollHeight;
   }, [chatHistorial, cargandoChat]);
+
+  const lectura = estado?.lectura;
+  const temperaturaAlta = lectura && numero(lectura.temperatura) !== null && numero(lectura.temperatura) > 30;
 
   if (!token) return (
     <main className="acceso">
@@ -231,22 +236,19 @@ function App() {
         {avisoReporte && <div className={`aviso ${avisoReporte.error ? 'aviso-error' : ''}`} role={avisoReporte.error ? 'alert' : 'status'}>{avisoReporte.mensaje}</div>}
         <div className="contenido-principal">
           <section className="lecturas" aria-labelledby="titulo-lecturas">
-            <div className="titulo-seccion"><div><span className="antetitulo">TU CULTIVO, DE UN VISTAZO</span><h2 id="titulo-lecturas">Dispositivos ESP</h2></div><span className="contador">{datos.length} {datos.length === 1 ? 'dispositivo' : 'dispositivos'}</span></div>
-            <p className="descripcion-seccion">Temperatura, humedad y estado de cada equipo.</p>
+            <div className="titulo-seccion"><div><span className="antetitulo">TU PLANTA, DE UN VISTAZO</span><h2 id="titulo-lecturas">{estado?.planta.nombre || 'Mi planta'}</h2></div><span className="contador">1 ESP32</span></div>
+            <p className="descripcion-seccion">Estado actual de temperatura, humedad y bomba.</p>
             {errorDatos && <p className="aviso aviso-error" role="alert">{errorDatos}</p>}
-            {cargandoDatos ? <div className="estado-vacio" role="status">Cargando lecturas…</div> : datos.length === 0 ? <div className="estado-vacio"><Icono nombre="planta" /><h3>Aún no hay lecturas disponibles</h3><p>Las mediciones aparecerán aquí cuando se registren.</p></div> :
-              <div className="tarjetas">{datos.map(lectura => {
-                const alta = numero(lectura.temperatura) !== null && numero(lectura.temperatura) > 30;
-                return <article key={lectura.id} className={`tarjeta ${alta ? 'tarjeta-alerta' : ''}`}>
-                  <div className="tarjeta-cabecera"><div><h3>{lectura.dispositivo_id || 'Dispositivo sin nombre'}</h3><p className="id-dispositivo">ID {lectura.id}</p></div><span className={`etiqueta ${alta ? 'alta' : ''}`}>{alta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
+            {cargandoDatos ? <div className="estado-vacio" role="status">Cargando lecturas…</div> : !lectura ? <div className="estado-vacio"><Icono nombre="planta" /><h3>Aún no hay lecturas disponibles</h3><p>La primera medición de tu planta aparecerá aquí.</p></div> :
+              <div className="tarjetas"><article className={`tarjeta ${temperaturaAlta ? 'tarjeta-alerta' : ''}`}>
+                  <div className="tarjeta-cabecera"><div><h3>{estado.planta.dispositivo_id}</h3><p className="id-dispositivo">ESP32 de {estado.planta.nombre}</p></div><span className={`etiqueta ${temperaturaAlta ? 'alta' : ''}`}>{temperaturaAlta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
                   <dl className="mediciones">
-                    <div><dt><Icono nombre="temperatura" />Temperatura</dt><dd className={alta ? 'valor-alto' : ''}>{medida(lectura.temperatura)}<span>°C</span></dd></div>
+                    <div><dt><Icono nombre="temperatura" />Temperatura</dt><dd className={temperaturaAlta ? 'valor-alto' : ''}>{medida(lectura.temperatura)}<span>°C</span></dd></div>
                     <div><dt><Icono nombre="humedad" />Humedad</dt><dd>{medida(lectura.humedad)}<span>%</span></dd></div>
                   </dl>
                   <div className="estado-bomba"><span>Bomba</span><span className="bomba-valor"><span className={`punto ${lectura.bomba_encendida === true ? 'activo' : ''}`} />{estadoBomba(lectura.bomba_encendida)}</span></div>
-                  <p className="fecha-lectura">Última lectura<span>{fecha(lectura.fecha_hora)}</span></p>
-                </article>;
-              })}</div>}
+                  <p className="fecha-lectura">Último cambio<span>{fecha(lectura.fecha_hora)}</span></p>
+                </article></div>}
           </section>
 
           <section className="chat-panel" aria-labelledby="titulo-chat">

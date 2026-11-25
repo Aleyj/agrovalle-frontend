@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
 import PanelAnalisis from './PanelAnalisis';
+import PlantaSprite from './PlantaSprite';
 
 const api = axios.create({
   baseURL: (import.meta.env.VITE_API_URL || 'https://agrovalle-backend-api.onrender.com').replace(/\/+$/, ''),
@@ -9,14 +10,19 @@ const api = axios.create({
 });
 
 function Icono({ nombre, ...props }) {
-  if (nombre === 'planta' || nombre === 'bot') {
-    return <span className="icono-emoji" aria-hidden="true">{nombre === 'planta' ? '🌱' : '🤖'}</span>;
+  if (nombre === 'planta') {
+    return <span className="icono-emoji" aria-hidden="true">🌱</span>;
   }
   const trazos = {
     temperatura: <><path d="M9 14.5V5a3 3 0 0 1 6 0v9.5a5 5 0 1 1-6 0Z" /><path d="M12 8v10" /></>,
     humedad: <path d="M12 3S5 11 5 15a7 7 0 0 0 14 0c0-4-7-12-7-12Z" />,
     correo: <><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 6 9 7 9-7" /></>,
     flecha: <><path d="M5 12h14m-5-5 5 5-5 5" /></>,
+    bot: <><rect x="5" y="7" width="14" height="13" rx="4" /><path d="M12 3v4M9 12h.01M15 12h.01M9 16h6M2 11v5m20-5v5" /></>,
+    sol: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5" /></>,
+    luna: <path d="M20 14a8 8 0 0 1-10-10 8 8 0 1 0 10 10Z" />,
+    bomba: <><path d="M8 11V5h8v6m-5-6V2h5M5 19v-7h14v7M3 21h18M2 15h3m14 0h3" /><circle cx="12" cy="15" r="2" /></>,
+    alerta: <><path d="m12 3 10 18H2L12 3Z" /><path d="M12 9v5m0 3h.01" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}>{trazos[nombre]}</svg>;
 }
@@ -27,7 +33,7 @@ function Marca() {
 
 function SelectorTema({ tema, cambiarTema }) {
   const destino = tema === 'dark' ? 'claro' : 'oscuro';
-  return <button type="button" className="boton secundario selector-tema" onClick={cambiarTema} aria-label={`Activar modo ${destino}`} aria-pressed={tema === 'dark'} title={`Activar modo ${destino}`}><span aria-hidden="true">{tema === 'dark' ? '☀️' : '🌙'}</span><span className="texto-tema">Modo {destino}</span></button>;
+  return <button type="button" className="boton secundario selector-tema" onClick={cambiarTema} aria-label={`Activar modo ${destino}`} aria-pressed={tema === 'dark'} title={`Activar modo ${destino}`}><Icono nombre={tema === 'dark' ? 'sol' : 'luna'} /><span className="texto-tema">Modo {destino}</span></button>;
 }
 
 function temaInicial() {
@@ -249,12 +255,17 @@ function App() {
             {errorDatos && <p className="aviso aviso-error" role="alert">{errorDatos}</p>}
             {cargandoDatos ? <div className="estado-vacio" role="status">Cargando lecturas…</div> : !lectura ? <div className="estado-vacio"><Icono nombre="planta" /><h3>Aún no hay lecturas disponibles</h3><p>La primera medición de tu planta aparecerá aquí.</p></div> :
               <div className="tarjetas"><article className={`tarjeta ${temperaturaAlta ? 'tarjeta-alerta' : ''}`}>
-                  <div className="tarjeta-cabecera"><h3>{estado.planta.dispositivo_id}</h3><span className={`etiqueta ${temperaturaAlta ? 'alta' : ''}`}>{temperaturaAlta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
+                  <div className="tarjeta-cabecera"><h3>{estado.planta.dispositivo_id}</h3><span className={`etiqueta ${temperaturaAlta ? 'alta' : ''}`}>{temperaturaAlta && <Icono nombre="alerta" />}{temperaturaAlta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
+                  <div className="planta-resumen">
+                  <PlantaSprite />
+                  <div className="planta-datos">
                   <dl className="mediciones">
                     <div><dt><Icono nombre="temperatura" />Temperatura</dt><dd className={temperaturaAlta ? 'valor-alto' : ''}>{medida(lectura.temperatura)}<span>°C</span></dd></div>
                     <div><dt><Icono nombre="humedad" />Humedad</dt><dd>{medida(lectura.humedad)}<span>%</span></dd></div>
+                    <div><dt><Icono nombre="bomba" />Bomba</dt><dd className="indicador-bomba"><span className={`punto ${lectura.bomba_encendida === true ? 'activo' : ''}`} />{estadoBomba(lectura.bomba_encendida)}</dd></div>
                   </dl>
-                  <div className="estado-bomba"><span>Bomba</span><span className="bomba-valor"><span className={`punto ${lectura.bomba_encendida === true ? 'activo' : ''}`} />{estadoBomba(lectura.bomba_encendida)}</span></div>
+                  </div>
+                  </div>
                   <p className="fecha-lectura">Último cambio<span>{fecha(lectura.fecha_hora)}</span></p>
                 </article></div>}
           </section>

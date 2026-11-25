@@ -1,5 +1,52 @@
 # AgroValle: mejora visual simple
 
+## Composicion AgriTech minimalista — 25 de noviembre de 2026
+
+Se conserva Anton exclusivamente en la marca y se reutiliza Manrope local para
+titulos, cifras, controles y textos. Sin nuevas fuentes descargadas ni dependencias.
+Cabecera de 88 px en escritorio, botones con geometria comun, dos columnas ~65/35
+y superficies alineadas. El monitoreo integra titulo, estado en cabecera, planta
+pixel art original y tres indicadores independientes para temperatura, humedad y
+bomba. Se elimina el recuadro decorativo del sprite y el borde exterior redundante
+de la tarjeta interna. Fecha del ultimo cambio al pie, siempre visible.
+
+Paleta oscura de referencia: fondo #121A15, panel #1C2820, primario #A8C99B,
+texto #F0F4ED, secundario #9BA99E y alerta #E9AA83; variante clara equivalente.
+La foto agricola, su difuminado y luminosidad anterior se conservan. Iconos lineales
+para robot, controles, alerta e indicadores; emoji de marca y sprite conservados.
+Chat con mensajes mas simples, entrada compacta, bordes sutiles y sin sombras
+pronunciadas. Radios principales de 12–16 px, espaciado en multiplos de cuatro.
+Columnas apiladas bajo 850 px; indicadores se adaptan a pantallas estrechas.
+
+Cambios limitados a CSS, iconografia y distribucion JSX de los indicadores.
+No se modifican llamadas HTTP, validacion, umbral >30, ESP32, reportes ni AgroBot.
+Validacion: build Vite, lint y prueba de URL del dashboard aprobados; 45
+comprobaciones Chrome con API local simulada, incluyendo contraste claro/oscuro,
+alineacion 65/35, tres indicadores, fuentes locales, movimiento reducido, estados
+vacios y antiguos, chat/reportes/login y ausencia de desbordamiento a 320, 768,
+1024 y 1440 px. Capturas de escritorio y movil revisadas. Sin correos reales,
+consultas a servicios externos, cambios de produccion, commits ni push.
+
+## Jerarquia UCAL y planta pixel art — 25 de noviembre de 2026
+
+Se reutiliza la jerarquia de dashboard-ucal y journey-estudiante: Anton local para
+marca, titulos y cifras principales; Helvetica Neue/Helvetica/Arial para textos,
+etiquetas y controles. Fuente y licencia OFL copiadas del proyecto de referencia.
+La tarjeta de la unica planta ocupa el ancho de su seccion, con una ilustracion
+SVG propia en cuadricula pixel art de una planta en maceta. El follaje se anima
+en pasos, sin rotaciones ni dependencias; prefers-reduced-motion detiene el movimiento.
+Es decorativa y no representa salud, disponibilidad ni estado real del cultivo.
+Modo oscuro con superficies neutras, verde salvia, terracota y bordes discretos;
+la alerta conserva texto y color sin un contorno brillante en toda la tarjeta.
+No se modifican endpoints, credenciales, lecturas, correos ni el servicio Streamlit.
+
+Validacion: compilacion Vite y lint aprobados; 38 comprobaciones Chrome con API
+local simulada (jerarquia, sprite, movimiento reducido, contraste de texto en
+ambos temas, ancho, movil, login, chat, avisos de reporte y refresco de lecturas).
+Capturas locales revisadas en escritorio y movil. Sin servicios externos ni envios.
+Tras revisar las capturas se elimina la rotacion del follaje para conservar la
+cuadricula y se ajusta el sprite de escritorio a escala entera.
+
 Actualizacion visual del 24 de noviembre de 2026: Manrope variable alojada en
 public/fonts con su licencia SIL OFL, acento trigo/dorado y textos mas breves.
 Se retiran el contador 1 ESP32, la descripcion repetida del estado y el subtitulo

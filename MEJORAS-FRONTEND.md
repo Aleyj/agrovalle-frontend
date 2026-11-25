@@ -1,5 +1,28 @@
 # AgroValle: mejora visual simple
 
+Actualizacion visual del 24 de noviembre de 2026: Manrope variable alojada en
+public/fonts con su licencia SIL OFL, acento trigo/dorado y textos mas breves.
+Se retiran el contador 1 ESP32, la descripcion repetida del estado y el subtitulo
+duplicado de la tarjeta. Los avisos de reporte pasan a una notificacion flotante:
+«Reporte solicitado. Revisa tu correo en unos momentos.» o «Reporte preparado.
+No se envio correo.» en preparacion. Los exitos se ocultan a los cinco segundos;
+los errores permanecen y todos pueden cerrarse manualmente. No se muestran detalles
+de Resend ni se afirma entrega. El backend conserva su respuesta tecnica completa.
+Se mantienen emojis, foto difuminada, temas claro/oscuro y aviso de datos antiguos.
+La ayuda de carga del iframe queda en un desplegable. No se requiere nueva variable
+de entorno para estos ajustes ni se hizo despliegue.
+
+Actualizacion del 24 de noviembre de 2026: se agrega una seccion desplegable de
+analisis dentro de la misma pagina. PanelAnalisis.jsx carga Streamlit por iframe
+solo al abrir; admite recarga, enlace alternativo y movil. La URL publica se configura
+con VITE_STREAMLIT_URL; en desarrollo usa localhost:8501 si no se define, y en
+produccion muestra un estado no disponible sin URL valida. Se rechazan URLs con
+credenciales/parametros y HTTP remoto. No se transmite el JWT ni claves al iframe.
+El tema inicial se conserva en el marco para no perder filtros al alternar el tema
+principal. Ocultar o salir desmonta el iframe. Streamlit tiene acceso independiente,
+consulta un endpoint de solo lectura y requiere despliegue Python separado; ver
+backend/dashboard/README.md en el repositorio backend. Historial de mejoras anterior:
+
 Actualización del 22 de noviembre de 2026: el panel pasa a una sola planta y un
 ESP32. Consulta `/api/estado` y actualiza la misma tarjeta con el último cambio,
 mostrando la planta asociada, el dispositivo y la fecha del cambio. Las filas

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import './App.css';
+import PanelAnalisis from './PanelAnalisis';
 
 const api = axios.create({
   baseURL: (import.meta.env.VITE_API_URL || 'https://agrovalle-backend-api.onrender.com').replace(/\/+$/, ''),
@@ -89,6 +90,12 @@ function App() {
 
   const cambiarTema = () => setTema(actual => actual === 'dark' ? 'light' : 'dark');
 
+  useEffect(() => {
+    if (!avisoReporte || avisoReporte.error) return;
+    const temporizador = setTimeout(() => setAvisoReporte(null), 5000);
+    return () => clearTimeout(temporizador);
+  }, [avisoReporte]);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (ingresando) return;
@@ -130,12 +137,14 @@ function App() {
     try {
       const res = await api.post('/api/reporte');
       if (sesion !== sesionRef.current) return;
-      const mensaje = res.data.preparado ? 'Reporte preparado para revisión; no se envió correo.' :
-        res.data.correo?.estado === 'aceptado' ? `Reporte aceptado por ${res.data.correo.proveedor === 'resend' ? 'Resend' : 'el servidor de correo'}. La entrega aún no está confirmada.` :
-        res.data.mensaje || 'Solicitud de reporte procesada.';
+      if (res.data?.ok !== true) throw new Error('REPORTE_NO_CONFIRMADO');
+      const mensaje = res.data.preparado ? 'Reporte preparado. No se envió correo.' :
+        'Reporte solicitado. Revisa tu correo en unos momentos.';
       setAvisoReporte({ error: false, mensaje });
     } catch (error) {
-      if (sesion === sesionRef.current) setAvisoReporte({ error: true, mensaje: error.response?.data?.error || 'No se pudo confirmar el envío del reporte. No se reintentó automáticamente.' });
+      if (sesion === sesionRef.current) setAvisoReporte({ error: true, mensaje: error.response?.status === 503 ?
+        'No se pudo preparar el reporte. Inténtalo más tarde.' :
+        'No se pudo confirmar la solicitud. Revisa tu correo antes de volver a intentarlo.' });
     } finally {
       if (sesion === sesionRef.current) setEnviandoReporte(false);
     }
@@ -233,15 +242,14 @@ function App() {
       </header>
 
       <main>
-        {avisoReporte && <div className={`aviso ${avisoReporte.error ? 'aviso-error' : ''}`} role={avisoReporte.error ? 'alert' : 'status'}>{avisoReporte.mensaje}</div>}
+        {avisoReporte && <div className={`aviso aviso-reporte ${avisoReporte.error ? 'aviso-error' : ''}`} role={avisoReporte.error ? 'alert' : 'status'} aria-atomic="true"><span>{avisoReporte.mensaje}</span><button type="button" aria-label="Cerrar aviso del reporte" onClick={() => setAvisoReporte(null)}>×</button></div>}
         <div className="contenido-principal">
           <section className="lecturas" aria-labelledby="titulo-lecturas">
-            <div className="titulo-seccion"><div><span className="antetitulo">TU PLANTA, DE UN VISTAZO</span><h2 id="titulo-lecturas">{estado?.planta.nombre || 'Mi planta'}</h2></div><span className="contador">1 ESP32</span></div>
-            <p className="descripcion-seccion">Estado actual de temperatura, humedad y bomba.</p>
+            <div className="titulo-seccion"><div><span className="antetitulo">TU PLANTA, DE UN VISTAZO</span><h2 id="titulo-lecturas">{estado?.planta.nombre || 'Mi planta'}</h2></div></div>
             {errorDatos && <p className="aviso aviso-error" role="alert">{errorDatos}</p>}
             {cargandoDatos ? <div className="estado-vacio" role="status">Cargando lecturas…</div> : !lectura ? <div className="estado-vacio"><Icono nombre="planta" /><h3>Aún no hay lecturas disponibles</h3><p>La primera medición de tu planta aparecerá aquí.</p></div> :
               <div className="tarjetas"><article className={`tarjeta ${temperaturaAlta ? 'tarjeta-alerta' : ''}`}>
-                  <div className="tarjeta-cabecera"><div><h3>{estado.planta.dispositivo_id}</h3><p className="id-dispositivo">ESP32 de {estado.planta.nombre}</p></div><span className={`etiqueta ${temperaturaAlta ? 'alta' : ''}`}>{temperaturaAlta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
+                  <div className="tarjeta-cabecera"><h3>{estado.planta.dispositivo_id}</h3><span className={`etiqueta ${temperaturaAlta ? 'alta' : ''}`}>{temperaturaAlta ? 'Temperatura alta' : numero(lectura.temperatura) === null ? 'Sin temperatura' : 'Sin alerta térmica'}</span></div>
                   <dl className="mediciones">
                     <div><dt><Icono nombre="temperatura" />Temperatura</dt><dd className={temperaturaAlta ? 'valor-alto' : ''}>{medida(lectura.temperatura)}<span>°C</span></dd></div>
                     <div><dt><Icono nombre="humedad" />Humedad</dt><dd>{medida(lectura.humedad)}<span>%</span></dd></div>
@@ -267,6 +275,7 @@ function App() {
           </section>
         </div>
 
+        <PanelAnalisis tema={tema} />
       </main>
       <footer className="pie">AgroValle<span>Monitoreo agrícola · Proyecto académico</span></footer>
     </div>

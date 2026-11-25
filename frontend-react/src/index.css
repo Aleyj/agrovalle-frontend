@@ -1,5 +1,16 @@
+@font-face {
+  font-family: 'Manrope';
+  src: url('/fonts/Manrope.ttf') format('truetype');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
-  font-family: system-ui, sans-serif;
+  font-family: 'Manrope', system-ui, sans-serif;
+  --acento: #79531b;
+  --acento-fondo: #f7eddb;
+  --acento-borde: #d3ae68;
   --texto: #20362b;
   --muted: #53685a;
   --fondo: #f4f7f3;
@@ -44,6 +55,9 @@
 }
 
 :root[data-tema="dark"] {
+  --acento: #e6c48a;
+  --acento-fondo: #3d3423;
+  --acento-borde: #8b6e3d;
   color-scheme: dark;
   --texto: #e6eee8;
   --muted: #b1c1b6;
@@ -88,6 +102,7 @@ button { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
 button, input { -webkit-tap-highlight-color: transparent; }
 :focus-visible { outline: 3px solid var(--foco); outline-offset: 3px; }
+::selection { background: var(--acento-fondo); color: var(--acento); }
 h1, h2, h3, p { margin: 0; }
 svg { width: 20px; height: 20px; flex-shrink: 0; }
 button { touch-action: manipulation; }

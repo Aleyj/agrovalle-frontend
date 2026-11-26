@@ -206,7 +206,7 @@ function App() {
       }
     };
     cargarDatos();
-    const intervalo = setInterval(cargarDatos, 5000);
+    const intervalo = setInterval(cargarDatos, 2500);
     return () => { activo = false; controller.abort(); clearInterval(intervalo); };
   }, [token]);
 
@@ -216,7 +216,7 @@ function App() {
   }, [chatHistorial, cargandoChat]);
 
   const lectura = estado?.lectura;
-  const temperaturaAlta = lectura && numero(lectura.temperatura) !== null && numero(lectura.temperatura) > 30;
+  const temperaturaAlta = lectura && numero(lectura.temperatura) !== null && numero(lectura.temperatura) >= 30;
 
   if (!token) return (
     <main className="acceso">

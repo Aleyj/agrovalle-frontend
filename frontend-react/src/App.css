@@ -33,8 +33,12 @@
 .planta-resumen { display: flex; flex-direction: column; gap: 16px; padding: 8px 0 0; }
 .planta-escena { min-height: 180px; display: grid; place-items: center; width: 100%; }
 .planta-sprite { width: 160px; height: 180px; max-width: 100%; image-rendering: pixelated; }
-.planta-follaje { transform-origin: 32px 46px; animation: planta-brisa 4s steps(2, end) infinite; }
-@keyframes planta-brisa { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(1px); } 75% { transform: translateX(-1px); } }
+.planta-hoja { animation: hoja-brisa 4s steps(2, end) infinite; }
+.hoja-superior-izquierda { transform-origin: 30px 31px; }
+.hoja-superior-derecha { transform-origin: 34px 29px; animation-delay: -1s; }
+.hoja-inferior-izquierda { transform-origin: 30px 39px; animation-delay: -2s; }
+.hoja-inferior-derecha { transform-origin: 34px 39px; animation-delay: -3s; }
+@keyframes hoja-brisa { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.9); } }
 .planta-datos .mediciones { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0; }
 .planta-datos .mediciones dd { font-family: var(--font-body); font-size: 30px; line-height: 1.3; font-weight: 650; letter-spacing: -1px; }
 .planta-datos .mediciones dd span { font-size: 15px; letter-spacing: 0; }
@@ -119,7 +123,7 @@ input:disabled { background: var(--tabla-cabecera); }
 .form-acceso .boton { margin-top: 5px; justify-content: space-between; }
 .nota-acceso { color: var(--muted); font-size: 11px; text-align: center; margin-top: 28px; }
 @media (max-width: 600px) { .acciones-cabecera .selector-tema { padding: 10px; min-width: 43px; } .acciones-cabecera .texto-tema { display: none; } }
-@media (prefers-reduced-motion: reduce) { .boton { transition: none; } .planta-follaje { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .boton { transition: none; } .planta-hoja { animation: none; } }
 
 .lecturas, .chat-panel { border: 1px solid var(--borde); border-radius: 16px; background: var(--panel); min-width: 0; }
 .lecturas { padding: 24px; }

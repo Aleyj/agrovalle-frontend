@@ -3,16 +3,22 @@ export default function PlantaSprite() {
   return <div className="planta-escena" aria-hidden="true">
     <svg className="planta-sprite" viewBox="0 0 64 72" fill="none" shapeRendering="crispEdges">
       <ellipse cx="32" cy="65" rx="22" ry="3" fill="var(--sprite-sombra)" />
-      <g className="planta-follaje">
-        <path d="M30 48V24h4v24h-4ZM26 30h4v4h-4Zm8-8h4v4h-4Z" fill="#385343" />
+      <path d="M30 48V24h4v24h-4ZM26 30h4v4h-4Zm8-8h4v4h-4Z" fill="#385343" />
+      <g className="planta-hoja hoja-superior-izquierda">
         <path d="M30 31H18v-4h-6V15h12v4h6v12Z" fill="#385343" />
         <path d="M16 19h8v4h6v4H18v-4h-2v-4Z" fill="#749664" />
         <path d="M16 19h8v4h-8z" fill="#a8b97a" />
+      </g>
+      <g className="planta-hoja hoja-superior-derecha">
         <path d="M34 25V15h6v-4h14v12h-6v4H38v4h-4v-6Z" fill="#385343" />
         <path d="M38 19h4v-4h8v8H38v4h-4v-4h4v-4Z" fill="#7e9c68" />
         <path d="M42 15h8v4h-8z" fill="#b0c184" />
+      </g>
+      <g className="planta-hoja hoja-inferior-izquierda">
         <path d="M30 39H20v-4h-6v-8h10v4h6v8Z" fill="#385343" />
         <path d="M18 31h6v4h6v4h-6v-4h-6z" fill="#87a16b" />
+      </g>
+      <g className="planta-hoja hoja-inferior-derecha">
         <path d="M34 39v-8h6v-4h10v8h-6v4H34Z" fill="#385343" />
         <path d="M38 35v-4h8v4h-8z" fill="#92aa73" />
       </g>
